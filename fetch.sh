@@ -9,15 +9,15 @@ if [ ! -f "$CONFIG_FILE" ]; then
     echo "# Default server URL" >> "$CONFIG_FILE"
     echo "
 server_url=\"http://localhost:5000\"
-token_prefix=\"default_prefix\"
+fetch_password=\"default_password\"
 " >> "$CONFIG_FILE"
 fi
 
 # 从配置文件中读取服务器 URL
 source "$CONFIG_FILE"
 export server_url
-export token_prefix
-password=$(echo -n "${token_prefix}$(date +%s | cut -c -9)" | sha256sum | cut -d' ' -f1)
+export fetch_password
+password=$(echo -n "${fetch_password}$(date +%s | cut -c -9)" | sha256sum | cut -d' ' -f1)
 
 # 检查命令参数
 if [ -z "$1" ]; then
@@ -71,7 +71,7 @@ case "$command" in
         if [ -n "$2" ]; then
             echo "
 server_url=\"$2\"
-token_prefix=\"$token_prefix\"
+fetch_password=\"$fetch_password\"
 " > "$CONFIG_FILE"
             echo "Server URL set to $2"
         else
@@ -80,14 +80,14 @@ token_prefix=\"$token_prefix\"
         fi
         ;;
 
-    prefix)
-        # 设置token前缀
+    password)
+        # 设置password
         if [ -n "$2" ]; then
             echo "
 server_url=\"$server_url\"
-token_prefix=\"$2\"
+fetch_password=\"$2\"
 " > "$CONFIG_FILE"
-            echo "prefix set to $2"
+            echo "password set to $2"
         else
             echo "No URL provided for source"
             exit 1
@@ -95,7 +95,7 @@ token_prefix=\"$2\"
         ;;
     test)
         echo "server_url: $server_url"
-        echo "token_prefix: $token_prefix"
+        echo "fetch_password: $fetch_password"
         echo "token: $password"
         curl --header "Authorization: $password" -X GET "$server_url/test"
         # curl -X POST "$server_url/test"

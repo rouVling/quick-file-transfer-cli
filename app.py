@@ -12,7 +12,7 @@ parser = argparse.ArgumentParser(description="跨平台传文件小工具")
 parser.add_argument("--port", type=int, default=9963, help="端口号")
 parser.add_argument("--host", type=str, default="0.0.0.0", help="主机地址")
 parser.add_argument("--base_dir", type=str, help="文件保存路径")
-parser.add_argument("--prefix", type=str, help="安全访问前缀")
+parser.add_argument("--password", type=str, help="访问密钥")
 
 args = parser.parse_args()
 
@@ -23,7 +23,7 @@ if not os.path.exists(base_dir):
 
 def auth(token):
     current_time = str(int(time.time()))[:-1]
-    correct_token = hashlib.sha256((args.prefix + current_time).encode()).hexdigest()
+    correct_token = hashlib.sha256((args.password + current_time).encode()).hexdigest()
     return token == correct_token
 
 @app.route("/upload", methods=["POST"])
@@ -84,7 +84,7 @@ def download_and_remove(filename):
 # @app.route("/test", methods=["GET"])
 # def test():
 #     current_time = str(int(time.time()))[:-1]
-#     token = hashlib.sha256((args.prefix + current_time).encode()).hexdigest()
+#     token = hashlib.sha256((args.password + current_time).encode()).hexdigest()
 #     print("token: ", token)
 #     print("auth:  ", request.headers.get('Authorization'))
 #     if token == request.headers.get('Authorization'):
