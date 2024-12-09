@@ -29,22 +29,31 @@ bash fetch.sh password your_password
 then, you can upload and download
 
 ```
-fetch upload a.txt b.txt
+bash fetch.sh upload a.txt b.txt
 ```
 
 ```
-fetch get a.txt b.txt
+bash fetch.sh get a.txt b.txt
 ```
 
 NOTE: download by default will cut the file from your server from your computer. If you want to copy it instead, you can add `--no-remove` before file names.
 
 ```
-fetch get --no-remove a.txt b.txt
+bash fetch.sh get --no-remove a.txt b.txt
 ```
 
 ## More
 
-you can set alias to quickly use fetch.sh
+you can set alias to quickly use fetch.sh, for example, if you put fetch.sh at `~/fetch.sh`
+
+add
+
+```
+alias fetch="bash $HOME/fetch.sh"
+```
+
+in your `~/.bashrc` and you can directly use `fetch` command
+
 
 password is safe for the real password in http request changes along the time.
 
