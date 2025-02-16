@@ -28,6 +28,18 @@
     </div>
     <!-- button: used for debug -->
     <!-- <button id="debug">debug</button> -->
+    <!-- button: share -->
+    <button id="share">分享</button>
+    <div>
+        <h3>使用说明</h3>
+        <p>1. 上传文件：选择文件后点击上传按钮，上传进度会显示在下方</p>
+        <p>2. 下载文件：输入目标文件名后点击下载按钮，文件会自动下载</p>
+        <p>3. 分享：点击分享按钮，链接和密码会自动复制到剪贴板</p>
+
+        <h3>命令行上传下载接口</h3>
+        <p>使用<a href="https://github.com/rouVling/quick-file-transfer-cli" target="_blank">仓库</a>中 <code>fetch.sh</code> 脚本</p>
+        <p>具体使用方法见<a href="https://github.com/rouVling/quick-file-transfer-cli" target="_blank">仓库</a>中的说明</p>
+    </div>
 </body>
 
 <script src="https://cdn.jsdelivr.net/npm/js-sha256@0.11.0/src/sha256.min.js"></script>
@@ -129,6 +141,14 @@
         });
     });
     
+    // share
+    document.getElementById('share').addEventListener('click', () => {
+        // copy url and password to clipboard
+        const url = window.location.href;
+        const password = document.getElementById('password').value;
+        navigator.clipboard.writeText(`链接：${url.origin}\n访问密码：${password}`);
+        alert('已复制链接和密码到剪贴板');
+    });
 
 </script>
 
