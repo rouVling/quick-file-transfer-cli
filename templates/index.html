@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<html>
+<title>文件传输工具</title>
+
+<body>
+    <div>
+        <h1>文件传输工具</h1>
+    </div>
+    <input type="text" id="password" name="password" placeholder="访问密码">
+    <!-- <input type="text" id="server" name="server" placeholder="服务器地址"> -->
+    <!-- 2 cols -->
+    <div style="display: flex; flex-direction: row;">
+        <!-- left col -->
+        <div style="flex: 1; padding: 10px;">
+            <h2>上传</h2>
+            <input type="file" id="file" name="file" multiple>
+            <button id="upload">上传</button>
+            <div id="progress"></div>
+        </div>
+        <!-- right col -->
+        <div style="flex: 1; padding: 10px;">
+            <h2>下载</h2>
+            <!-- input: target file name, and a button for download -->
+            <input type="text" id="target" name="target" placeholder="目标文件名">
+            <button id="download">下载</button>
+        </div>
+    </div>
+    <!-- button: used for debug -->
+    <!-- <button id="debug">debug</button> -->
+</body>
+
+<script src="https://cdn.jsdelivr.net/npm/js-sha256@0.11.0/src/sha256.min.js"></script>
+
+<script>
+
+    // save password to localStorage and load it
+    const password = localStorage.getItem('password');
+    if (password) {
+        document.getElementById('password').value = password;
+    }
+    document.getElementById('password').addEventListener('input', () => {
+        localStorage.setItem('password', document.getElementById('password').value);
+    });
+
+    const url = new URL(window.location.href);
+
+    console.log("server: ", url.origin)
+
+
+    // const server = localStorage.getItem('server');
+    // if (server) {
+    //     document.getElementById('server').value = server;
+    // }
+    // document.getElementById('server').addEventListener('input', () => {
+    //     localStorage.setItem('server', document.getElementById('server').value);
+    // });
+
+    const getAccessToken = () => {
+        // get password
+        const password = document.getElementById('password').value;
+
+        // get current time
+        const current_time = Math.floor(Date.now() / 1000).toString().slice(0, -1);
+
+        // get correct token
+        const correct_token = sha256(password + current_time);
+
+        return {
+            time: current_time,
+            token: correct_token
+        }
+    };
+
+    // debug button: console.log timeEncode
+    // document.getElementById('debug').addEventListener('click', () => {
+    //     console.log(getAccessToken());
+    // });
+
+    // upload button: upload file
+    const progress = document.getElementById('progress');
+    let uploadProgressValue = 0;
+    let uploadProgressSum = 0;
+
+    document.getElementById('upload').addEventListener('click', () => {
+        const files = document.getElementById('file').files;
+        uploadProgressValue = 0;
+        uploadProgressSum = files.length;
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const formData = new FormData();
+            formData.append('file', file);
+            const { time, token } = getAccessToken();
+            fetch(`${url.origin}/upload`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `${token}`
+                },
+                body: formData
+            }).then(response => {
+                if (response.ok) {
+                    uploadProgressValue++;
+                    progress.innerText = `上传进度: ${uploadProgressValue}/${uploadProgressSum}`;
+                }
+            });
+        }
+    });
+
+    // download
+    document.getElementById('download').addEventListener('click', () => {
+        const target = document.getElementById('target').value;
+        const { time, token } = getAccessToken();
+        fetch(`${url.origin}/download/${target}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `${token}`
+            }
+        }).then(response => {
+            if (response.ok) {
+                response.blob().then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = target;
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                });
+            }
+        });
+    });
+    
+
+</script>
+
+</html>

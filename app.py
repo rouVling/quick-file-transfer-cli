@@ -1,4 +1,4 @@
-from flask import Flask, request, send_from_directory, abort
+from flask import Flask, request, send_from_directory, abort, render_template
 import argparse
 import os
 import time
@@ -15,6 +15,8 @@ parser.add_argument("--base_dir", type=str, help="文件保存路径")
 parser.add_argument("--password", type=str, help="访问密钥")
 
 args = parser.parse_args()
+
+print(args)
 
 base_dir = args.base_dir
 
@@ -91,6 +93,10 @@ def download_and_remove(filename):
 #         return "success", 200
 #     else:
 #         return "failed", 403
+
+@app.route("/", methods=["GET"])
+def index():
+    return render_template("index.html")
 
 if __name__ == "__main__":
     app.run(host=args.host, port=args.port)
