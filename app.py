@@ -3,8 +3,29 @@ import argparse
 import os
 import time
 import hashlib
+import re
 
-from werkzeug.utils import secure_filename
+# from werkzeug.utils import secure_filename
+
+def secure_filename(filename) -> str:
+    if isinstance(filename, str):
+        from unicodedata import normalize
+        filename = normalize('NFKD', filename).encode('utf-8', 'ignore')  # 转码
+        filename = filename.decode('utf-8')  # 解码
+    for sep in os.path.sep, os.path.altsep:
+        if sep:
+            filename = filename.replace(sep, ' ')
+
+    # 正则增加对汉字的过滤	\u4E00-\u9FBF	中文
+    # 自定义构建新正则
+    _filename_ascii_add_strip_re = re.compile(r'[^A-Za-z0-9_\u4E00-\u9FBF.-]')
+
+    # 使用正则
+    # 根据文件名中的空字符，包括空格、换行(\n)、制表符(\t)等，把文件名分割成列表，然后使用下划线“_”进行连接，再过滤掉正则之外的字符，最后去掉字符串两头的“._”字符，最终生成新的文件名
+    filename = str(_filename_ascii_add_strip_re.sub('', '_'.join(filename.split()))).strip('._')
+
+    return filename
+
 
 app = Flask(__name__)
 
