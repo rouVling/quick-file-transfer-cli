@@ -35,9 +35,14 @@ parser.add_argument("--host", type=str, default="0.0.0.0", help="主机地址")
 parser.add_argument("--base_dir", type=str, help="文件保存路径")
 parser.add_argument("--password", type=str, help="访问密钥")
 
+parser.add_argument("--no_auth", action="store_true", help="取消密码验证")
+
 args = parser.parse_args()
 
 print(args)
+
+if args.no_auth:
+    print("Warning: password authentication is disabled")
 
 base_dir = args.base_dir
 
@@ -45,6 +50,8 @@ if not os.path.exists(base_dir):
     os.makedirs(base_dir)
 
 def auth(token):
+    if args.no_auth:
+        return True
     current_time = str(int(time.time()))[:-1]
     correct_token = hashlib.sha256((args.password + current_time).encode()).hexdigest()
     return token == correct_token
