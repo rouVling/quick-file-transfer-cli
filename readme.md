@@ -22,9 +22,12 @@ for client, use `fetch.sh` to upload and download file. You can also visit the s
 
 客户端，使用`fetch.sh`上传和下载文件，你也可以访问服务端来管理文件
 
-if you use script, first, set url and password
+if you use script, first, set url and password. Default profile is `default`
 
-如果你使用脚本，首先设置url和密码
+> [!NOTE]  
+> After adding profile feature, you need to delete your `.fetchrc` file to use the new feature.
+
+如果你使用脚本，首先设置url和密码。默认配置是`default`
 
 > **Note** this will create a `.fetchrc` to store the settings at `$HOME`. Be careful for overwritting existing file.
 
