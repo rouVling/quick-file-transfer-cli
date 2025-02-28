@@ -7,22 +7,26 @@ import re
 
 # from werkzeug.utils import secure_filename
 
+
 def secure_filename(filename) -> str:
     if isinstance(filename, str):
         from unicodedata import normalize
-        filename = normalize('NFKD', filename).encode('utf-8', 'ignore')  # 转码
-        filename = filename.decode('utf-8')  # 解码
+
+        filename = normalize("NFKD", filename).encode("utf-8", "ignore")  # 转码
+        filename = filename.decode("utf-8")  # 解码
     for sep in os.path.sep, os.path.altsep:
         if sep:
-            filename = filename.replace(sep, ' ')
+            filename = filename.replace(sep, " ")
 
     # 正则增加对汉字的过滤	\u4E00-\u9FBF	中文
     # 自定义构建新正则
-    _filename_ascii_add_strip_re = re.compile(r'[^A-Za-z0-9_\u4E00-\u9FBF.-]')
+    _filename_ascii_add_strip_re = re.compile(r"[^A-Za-z0-9_\u4E00-\u9FBF.-]")
 
     # 使用正则
     # 根据文件名中的空字符，包括空格、换行(\n)、制表符(\t)等，把文件名分割成列表，然后使用下划线“_”进行连接，再过滤掉正则之外的字符，最后去掉字符串两头的“._”字符，最终生成新的文件名
-    filename = str(_filename_ascii_add_strip_re.sub('', '_'.join(filename.split()))).strip('._')
+    filename = str(
+        _filename_ascii_add_strip_re.sub("", "_".join(filename.split()))
+    ).strip("._")
 
     return filename
 
@@ -49,12 +53,21 @@ base_dir = args.base_dir
 if not os.path.exists(base_dir):
     os.makedirs(base_dir)
 
+
 def auth(token):
     if args.no_auth:
         return True
     current_time = str(int(time.time()))[:-1]
     correct_token = hashlib.sha256((args.password + current_time).encode()).hexdigest()
     return token == correct_token
+
+
+@app.route("/<filename>", methods=["GET"])
+def get_css_resource(filename):
+    if filename.endswith(".css") or filename.endswith(".map"):
+        return send_from_directory("templates", filename)
+    return abort(404, "File not found")
+
 
 @app.route("/upload", methods=["POST"])
 def upload():
@@ -111,6 +124,7 @@ def download_and_remove(filename):
     except FileNotFoundError:
         abort(404, "File not found")
 
+
 # @app.route("/test", methods=["GET"])
 # def test():
 #     current_time = str(int(time.time()))[:-1]
@@ -122,9 +136,11 @@ def download_and_remove(filename):
 #     else:
 #         return "failed", 403
 
+
 @app.route("/", methods=["GET"])
 def index():
     return render_template("index.html")
+
 
 if __name__ == "__main__":
     app.run(host=args.host, port=args.port)
