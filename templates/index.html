@@ -1,48 +1,72 @@
 <!DOCTYPE html>
-<meta charset="utf-8">
-<html>
-<title>文件传输工具</title>
-
-<body>
-    <div>
-        <h1>文件传输工具</h1>
+<html lang="zh">
+<head>
+    <title>文件传输工具</title>
+    <meta charset="utf-8">
+    <link href="./tailwind-output.css" rel="stylesheet"/>
+</head>
+<body class="flex bg-linear-to-t from-sky-200 to-indigo-200 w-screen h-screen">
+<div class="flex flex-col flex-1 justify-items-center items-center mx-100 my-20 rounded-xl ring-2 ring-blue-500/40 shadow-lg shadow-blue-500/80 p-5">
+    <div class="flex-1 flex items-center justify-items-center">
+        <h1 class="font-bold text-4xl">文件传输工具</h1>
     </div>
-    <input type="text" id="password" name="password" placeholder="访问密码">
-    <!-- <input type="text" id="server" name="server" placeholder="服务器地址"> -->
-    <!-- 2 cols -->
-    <div style="display: flex; flex-direction: row;">
-        <!-- left col -->
-        <div style="flex: 1; padding: 10px;">
-            <h2>上传</h2>
-            <input type="file" id="file" name="file" multiple>
-            <button id="upload">上传</button>
-            <div id="progress"></div>
+    <div class="flex-5 flex flex-col items-center justify-items-center">
+        <div class="flex-1 flex items-center justify-items-center">
+            <input class="ring-2 ring-indigo-500/50 rounded-sm px-4 py-2 text-sm w-80 outline-none hover:ring-indigo-500/60 shadow-lg hover:shadow-indigo-500/50 focus:shadow-indigo-400/80"
+                   id="password" name="password" placeholder="访问密码" type="text">
         </div>
-        <!-- right col -->
-        <div style="flex: 1; padding: 10px;">
-            <h2>下载</h2>
-            <!-- input: target file name, and a button for download -->
-            <input type="text" id="target" name="target" placeholder="目标文件名">
-            <button id="download">下载</button>
+        <!-- <input type="text" id="server" name="server" placeholder="服务器地址"> -->
+        <!-- 2 cols -->
+        <div class="flex flex-1 justify-items-center items-center content-items-center">
+            <!-- left col -->
+            <div class="flex-1 p-[10px] items-center justify-items-center">
+                <h2 class="text-2xl">上传</h2>
+                <input class="block rounded-xl ring-2 ring-cyan-500/40 px-4 py-2 m-2 w-80 text-stone-500 shadow-lg shadow-transparent hover:shadow-cyan-500/50 "
+                       id="file" placeholder="" multiple name="file" type="file">
+                <button class="rounded-xl px-4 py-2 ring-2 ring-cyan-400/40 block bg-cyan-400/40 text-rose-400 outline-none shadow-lg shadow-cyan-500/10 hover:shadow-cyan-500/40 active:shadow-cyan-500/50"
+                        id="upload">上传
+                </button>
+                <div id="progress"></div>
+            </div>
+            <!-- right col -->
+            <div class="flex-1 p-[10px] items-center justify-items-center">
+                <h2 class="text-2xl">下载</h2>
+                <!-- input: target file name, and a button for download -->
+                <input class="block rounded-xl ring-2 ring-cyan-500/40 px-4 py-2 m-2 w-80 text-stone-600 outline-none shadow-lg shadow-transparent hover:shadow-cyan-500/50 "
+                       id="target" name="target" placeholder="目标文件名" type="text">
+                <button class="rounded-xl px-4 py-2 ring-2 ring-cyan-400/40 block bg-cyan-400/40 text-rose-400 outline-none shadow-lg shadow-cyan-500/10 hover:shadow-cyan-500/40 active:shadow-cyan-500/50"
+                        id="download">下载
+                </button>
+            </div>
+        </div>
+        <!-- button: used for debug -->
+        <!-- <button id="debug">debug</button> -->
+        <!-- button: share -->
+        <div class="flex-1 flex flex-col items-center justify-center">
+            <button id="share"
+                    class="block rounded-xl ring-2  ring-indigo-500/40 bg-indigo-500/50 text-lg px-4 py-2 m-2 w-80 text-white outline-none shadow-lg shadow-transparent hover:shadow-indigo-500/40 active:shadow-indigo-500/60 ">
+                分享
+            </button>
+            <div id="share-content"></div>
+        </div>
+        <div class="flex-1 flex flex-col items-center justify-items-center">
+            <h3 class="text-lg font-bold">使用说明</h3>
+            <div class="w-100">
+                <p>1. 上传文件：选择文件后点击上传按钮，上传进度会显示在下方</p>
+                <p>2. 下载文件：输入目标文件名后点击下载按钮，文件会自动下载</p>
+                <p>3. 分享：点击分享按钮，链接和密码会自动复制到剪贴板</p>
+            </div>
+            <h3 class="text-lg font-bold">命令行上传下载接口</h3>
+            <div class="w-100">
+                <p>使用<a href="https://github.com/rouVling/quick-file-transfer-cli" target="_blank">仓库</a>中
+                    <code>fetch.sh</code>
+                    脚本</p>
+                <p>具体使用方法见<a href="https://github.com/rouVling/quick-file-transfer-cli" target="_blank">仓库</a>中的说明
+                </p>
+            </div>
         </div>
     </div>
-    <!-- button: used for debug -->
-    <!-- <button id="debug">debug</button> -->
-    <!-- button: share -->
-    <button id="share">分享</button>
-    <div id="share-content"></div>
-    <div>
-        <h3>使用说明</h3>
-        <p>1. 上传文件：选择文件后点击上传按钮，上传进度会显示在下方</p>
-        <p>2. 下载文件：输入目标文件名后点击下载按钮，文件会自动下载</p>
-        <p>3. 分享：点击分享按钮，链接和密码会自动复制到剪贴板</p>
-
-        <h3>命令行上传下载接口</h3>
-        <p>使用<a href="https://github.com/rouVling/quick-file-transfer-cli" target="_blank">仓库</a>中 <code>fetch.sh</code>
-            脚本</p>
-        <p>具体使用方法见<a href="https://github.com/rouVling/quick-file-transfer-cli" target="_blank">仓库</a>中的说明</p>
-    </div>
-</body>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/js-sha256@0.11.0/src/sha256.min.js"></script>
 
@@ -104,7 +128,7 @@
             const file = files[i];
             const formData = new FormData();
             formData.append('file', file);
-            const { time, token } = getAccessToken();
+            const {time, token} = getAccessToken();
             fetch(`${url.origin}/upload`, {
                 method: 'POST',
                 headers: {
@@ -123,7 +147,7 @@
     // download
     document.getElementById('download').addEventListener('click', () => {
         const target = document.getElementById('target').value;
-        const { time, token } = getAccessToken();
+        const {time, token} = getAccessToken();
         fetch(`${url.origin}/download/${target}`, {
             method: 'GET',
             headers: {
@@ -151,13 +175,14 @@
         if (!navigator.clipboard) {
             document.getElementById('share-content').innerText = `链接：${url}\n访问密码：${password}`;
             alert('无法访问剪贴板，请手动复制链接和密码');
-        }
-        else {
+        } else {
             navigator.clipboard.writeText(`链接：${url.origin}\n访问密码：${password}`);
             alert('已复制链接和密码到剪贴板');
         }
     });
 
 </script>
+
+</body>
 
 </html>
