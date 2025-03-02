@@ -148,23 +148,11 @@
     document.getElementById('download').addEventListener('click', () => {
         const target = document.getElementById('target').value;
         const {time, token} = getAccessToken();
-        fetch(`${url.origin}/download/${target}`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `${token}`
-            }
-        }).then(response => {
-            if (response.ok) {
-                response.blob().then(blob => {
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = target;
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                });
-            }
-        });
+        const burl = `${url.origin}/webdownload/${target}?tk=${token}`;
+        const a = document.createElement('a');
+        a.href = burl;
+        a.download = target;
+        a.click();
     });
 
     // share

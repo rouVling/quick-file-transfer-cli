@@ -101,6 +101,14 @@ def download(filename):
     except FileNotFoundError:
         abort(404, "File not found")
 
+@app.route("/webdownload/<filename>", methods=["GET"])
+def webdownload(filename):
+    if not auth(request.args.get("tk")):
+        abort(403, "Invalid or expired password")
+    try:
+        return send_from_directory(base_dir, filename, as_attachment=True)
+    except FileNotFoundError:
+        abort(404, "File not found")
 
 @app.route(
     "/remove/<filename>", methods=["POST"]
