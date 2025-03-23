@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>ls</title>
+</head>
+<body>
+	{% for file in files %}
+		<a href="/download/{{ file }}">{{ file }}</a><br>
+	{% endfor %}
+</body>
+</html>

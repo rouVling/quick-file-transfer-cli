@@ -40,6 +40,7 @@ parser.add_argument("--base_dir", type=str, help="文件保存路径")
 parser.add_argument("--password", type=str, help="访问密钥")
 
 parser.add_argument("--no_auth", action="store_true", help="取消密码验证")
+parser.add_argument("--lsdir", action="store_true", help="允许列出目录")
 
 args = parser.parse_args()
 
@@ -49,6 +50,9 @@ if args.no_auth:
     print("Warning: password authentication is disabled")
 
 base_dir = args.base_dir
+
+if not os.path.isabs(base_dir):
+    base_dir = os.path.abspath(base_dir)
 
 if not os.path.exists(base_dir):
     os.makedirs(base_dir)
@@ -148,6 +152,16 @@ def download_and_remove(filename):
 @app.route("/", methods=["GET"])
 def index():
     return render_template("index.html")
+
+@app.route("/ls", methods=["GET"])
+def ls():
+    if not args.lsdir:
+        abort(403, "lsdir is disabled")
+    if not args.no_auth:
+        abort(403, "no_auth need to be enabled to use lsdir")
+    # if not auth(request.headers.get("Authorization")):
+        # abort(403, "Invalid or expired password")
+    return render_template("ls.html", files=os.listdir(base_dir))
 
 
 if __name__ == "__main__":
