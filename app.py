@@ -41,6 +41,7 @@ parser.add_argument("--password", type=str, help="访问密钥")
 
 parser.add_argument("--no_auth", action="store_true", help="取消密码验证")
 parser.add_argument("--lsdir", action="store_true", help="允许列出目录")
+parser.add_argument("-r", "--recursive", action="store_true", help="递归访问所有子目录")
 
 args = parser.parse_args()
 
@@ -96,21 +97,39 @@ def upload():
         abort(400, "upload failed")
 
 
-@app.route("/download/<filename>", methods=["GET"])
-def download(filename):
+@app.route("/download/<path:filepath>", methods=["GET"])
+def download(filepath):
     if not auth(request.headers.get("Authorization")):
         abort(403, "Invalid or expired password")
+    
+    # 解析文件路径
+    file_dir, filename = os.path.split(filepath)
+    full_dir = os.path.join(base_dir, file_dir) if file_dir else base_dir
+    
+    # 安全检查：确保路径在 base_dir 内
+    if not os.path.normpath(full_dir).startswith(os.path.normpath(base_dir)):
+        abort(403, "Access denied")
+        
     try:
-        return send_from_directory(base_dir, filename, as_attachment=True)
+        return send_from_directory(full_dir, filename, as_attachment=True)
     except FileNotFoundError:
         abort(404, "File not found")
 
-@app.route("/webdownload/<filename>", methods=["GET"])
-def webdownload(filename):
+@app.route("/webdownload/<path:filepath>", methods=["GET"])
+def webdownload(filepath):
     if not auth(request.args.get("tk")):
         abort(403, "Invalid or expired password")
+    
+    # 解析文件路径
+    file_dir, filename = os.path.split(filepath)
+    full_dir = os.path.join(base_dir, file_dir) if file_dir else base_dir
+    
+    # 安全检查：确保路径在 base_dir 内
+    if not os.path.normpath(full_dir).startswith(os.path.normpath(base_dir)):
+        abort(403, "Access denied")
+        
     try:
-        return send_from_directory(base_dir, filename, as_attachment=True)
+        return send_from_directory(full_dir, filename, as_attachment=True)
     except FileNotFoundError:
         abort(404, "File not found")
 
@@ -154,14 +173,54 @@ def index():
     return render_template("index.html")
 
 @app.route("/ls", methods=["GET"])
-def ls():
+@app.route("/ls/", methods=["GET"])
+@app.route("/ls/<path:subpath>", methods=["GET"])
+def ls(subpath=None):
     if not args.lsdir:
         abort(403, "lsdir is disabled")
     if not args.no_auth:
         abort(403, "no_auth need to be enabled to use lsdir")
-    # if not auth(request.headers.get("Authorization")):
-        # abort(403, "Invalid or expired password")
-    return render_template("ls.html", files=os.listdir(base_dir))
+    
+    # 处理尾部斜杠的情况
+    if subpath == "":
+        subpath = None
+    
+    if not args.recursive and subpath:
+        abort(403, "recursive mode is disabled")
+    
+    # 构建当前目录的完整路径
+    current_dir = base_dir
+    if subpath:
+        current_dir = os.path.join(base_dir, subpath)
+        # 检查路径是否在 base_dir 范围内
+        if not os.path.normpath(current_dir).startswith(os.path.normpath(base_dir)):
+            abort(403, "Access denied")
+    
+    if not os.path.exists(current_dir) or not os.path.isdir(current_dir):
+        abort(404, "Directory not found")
+    
+    files = []
+    dirs = []
+    
+    for item in os.listdir(current_dir):
+        item_path = os.path.join(current_dir, item)
+        if os.path.isdir(item_path):
+            dirs.append(item)
+        else:
+            files.append(item)
+    
+    # 计算相对路径用于导航
+    rel_path = subpath if subpath else ""
+    parent_path = os.path.dirname(rel_path) if rel_path else None
+    
+    return render_template(
+        "directory.html", 
+        files=files, 
+        dirs=dirs, 
+        current_path=rel_path, 
+        parent_path=parent_path,
+        recursive=args.recursive
+    )
 
 
 if __name__ == "__main__":

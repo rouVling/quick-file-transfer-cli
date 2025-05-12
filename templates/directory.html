@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>文件目录</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        .directory {
+            margin-bottom: 20px;
+        }
+        .file-list {
+            margin-bottom: 20px;
+        }
+        .directory-item {
+            background-color: #f0f0f0;
+            padding: 5px 10px;
+            margin: 5px 0;
+            border-radius: 3px;
+            display: block;
+            text-decoration: none;
+            color: #0066cc;
+        }
+        .directory-item:hover {
+            background-color: #e0e0e0;
+        }
+        .file-item {
+            padding: 5px 10px;
+            margin: 5px 0;
+            border-radius: 3px;
+            display: block;
+            text-decoration: none;
+            color: #333;
+        }
+        .file-item:hover {
+            background-color: #f9f9f9;
+        }
+        .breadcrumb {
+            margin-bottom: 20px;
+        }
+        .breadcrumb a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <h1>文件目录</h1>
+    
+    <div class="breadcrumb">
+        位置：
+        <a href="/ls">根目录</a>
+        {% if current_path %}
+            {% set segments = current_path.split('/') %}
+            {% set current = "" %}
+            {% for segment in segments %}
+                {% set current = current + segment %}
+                / <a href="/ls/{{ current }}">{{ segment }}</a>
+                {% set current = current + "/" %}
+            {% endfor %}
+        {% endif %}
+    </div>
+    
+    {% if parent_path is not none and recursive %}
+    <div class="navigation">
+        <a href="/ls/{{ parent_path }}" class="directory-item">⬆️ 返回上级目录</a>
+    </div>
+    {% endif %}
+    
+    {% if dirs %}
+    <div class="directory">
+        <h2>目录</h2>
+        {% for dir in dirs %}
+            {% if recursive %}
+                {% if current_path %}
+                    <a href="/ls/{{ current_path }}/{{ dir }}" class="directory-item">📁 {{ dir }}</a>
+                {% else %}
+                    <a href="/ls/{{ dir }}" class="directory-item">📁 {{ dir }}</a>
+                {% endif %}
+            {% else %}
+                <span class="directory-item">📁 {{ dir }}</span>
+            {% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    {% if files %}
+    <div class="file-list">
+        <h2>文件</h2>
+        {% for file in files %}
+            {% if current_path %}
+                <a href="/download/{{ current_path }}/{{ file }}" class="file-item">📄 {{ file }}</a>
+            {% else %}
+                <a href="/download/{{ file }}" class="file-item">📄 {{ file }}</a>
+            {% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    {% if not dirs and not files %}
+    <p>此目录为空。</p>
+    {% endif %}
+</body>
+</html>
