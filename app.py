@@ -1,9 +1,10 @@
-from flask import Flask, request, send_from_directory, abort, render_template
+from flask import Flask, request, send_from_directory, abort, render_template, jsonify
 import argparse
 import os
 import time
 import hashlib
 import re
+from werkzeug.utils import secure_filename as werkzeug_secure_filename
 
 # from werkzeug.utils import secure_filename
 
@@ -74,27 +75,191 @@ def get_css_resource(filename):
     return abort(404, "File not found")
 
 
-@app.route("/upload", methods=["POST"])
-def upload():
+import json
+import logging
+from datetime import datetime, timedelta
+
+CHUNK_SIZE = 1024 * 1024  # 1MB chunks
+UPLOAD_TEMP_DIR = os.path.join(base_dir, '.temp_uploads')
+CHUNK_TIMEOUT = timedelta(hours=24)  # 临时文件保留24小时
+
+# 配置日志记录
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(os.path.join(base_dir, 'upload.log')),
+        logging.StreamHandler()
+    ]
+)
+
+if not os.path.exists(UPLOAD_TEMP_DIR):
+    os.makedirs(UPLOAD_TEMP_DIR)
+
+def cleanup_old_uploads():
+    """清理过期的临时文件"""
+    try:
+        now = datetime.now()
+        for file_id in os.listdir(UPLOAD_TEMP_DIR):
+            temp_dir = os.path.join(UPLOAD_TEMP_DIR, file_id)
+            meta_file = os.path.join(temp_dir, 'meta.json')
+            
+            if not os.path.exists(meta_file):
+                continue
+                
+            try:
+                with open(meta_file, 'r') as f:
+                    meta = json.load(f)
+                last_modified = datetime.fromtimestamp(meta.get('last_modified', 0))
+                
+                if now - last_modified > CHUNK_TIMEOUT:
+                    import shutil
+                    shutil.rmtree(temp_dir)
+                    logging.info(f'Cleaned up expired upload: {file_id}')
+            except Exception as e:
+                logging.error(f'Error cleaning up {file_id}: {str(e)}')
+    except Exception as e:
+        logging.error(f'Error in cleanup: {str(e)}')
+
+@app.route("/upload/status/<file_id>", methods=["GET"])
+def upload_status(file_id):
+    """获取上传状态"""
     if not auth(request.headers.get("Authorization")):
         abort(403, "Invalid or expired password")
-    print("enter upload")
-    if "file" not in request.files:
-        print("No file part")
-        abort(400, "No file part")
-    print("file in request.files")
-    file = request.files["file"]
-    if file.filename == "":
-        print("No selected file")
-        abort(400, "No selected file")
+        
+    temp_dir = os.path.join(UPLOAD_TEMP_DIR, file_id)
+    if not os.path.exists(temp_dir):
+        return jsonify({
+            'status': 'not_found',
+            'uploaded_chunks': []
+        })
+        
+    try:
+        meta_file = os.path.join(temp_dir, 'meta.json')
+        if os.path.exists(meta_file):
+            with open(meta_file, 'r') as f:
+                meta = json.load(f)
+            return jsonify({
+                'status': 'in_progress',
+                'uploaded_chunks': meta.get('uploaded_chunks', []),
+                'filename': meta.get('filename', '')
+            })
+    except Exception as e:
+        logging.error(f'Error reading upload status: {str(e)}')
+        
+    return jsonify({
+        'status': 'error',
+        'message': 'Could not read upload status'
+    })
 
-    if file:
+@app.route("/upload", methods=["POST"])
+def upload():
+    """处理文件上传"""
+    try:
+        if not auth(request.headers.get("Authorization")):
+            abort(403, "Invalid or expired password")
+
+        if "file" not in request.files:
+            abort(400, "No file part")
+
+        file = request.files["file"]
+        if file.filename == "":
+            abort(400, "No selected file")
+
+        chunk_number = request.form.get('chunk', 0, type=int)
+        total_chunks = request.form.get('total', 0, type=int)
+        file_id = request.form.get('file_id', '')
+
+        if not file_id:
+            abort(400, "Missing file ID")
+
         filename = secure_filename(file.filename)
-        file.save(os.path.join(base_dir, filename))
-        return "upload success", 200
-    else:
-        print("upload failed")
-        abort(400, "upload failed")
+        temp_dir = os.path.join(UPLOAD_TEMP_DIR, file_id)
+        
+        if not os.path.exists(temp_dir):
+            os.makedirs(temp_dir)
+
+        # 更新元数据
+        meta_file = os.path.join(temp_dir, 'meta.json')
+        meta = {
+            'filename': filename,
+            'total_chunks': total_chunks,
+            'last_modified': datetime.now().timestamp()
+        }
+        
+        if os.path.exists(meta_file):
+            try:
+                with open(meta_file, 'r') as f:
+                    existing_meta = json.load(f)
+                meta['uploaded_chunks'] = existing_meta.get('uploaded_chunks', [])
+            except Exception:
+                meta['uploaded_chunks'] = []
+        else:
+            meta['uploaded_chunks'] = []
+
+        # 保存分块
+        chunk_file = os.path.join(temp_dir, f'chunk_{chunk_number}')
+        file.save(chunk_file)
+        
+        if chunk_number not in meta['uploaded_chunks']:
+            meta['uploaded_chunks'].append(chunk_number)
+        
+        with open(meta_file, 'w') as f:
+            json.dump(meta, f)
+
+        logging.info(f'Received chunk {chunk_number} for file {filename} (ID: {file_id})')
+
+        # 检查是否所有分块都已上传
+        if len(meta['uploaded_chunks']) == total_chunks:
+            final_path = os.path.join(base_dir, filename)
+            
+            try:
+                with open(final_path, 'wb') as outfile:
+                    for i in range(total_chunks):
+                        chunk_path = os.path.join(temp_dir, f'chunk_{i}')
+                        if not os.path.exists(chunk_path):
+                            raise FileNotFoundError(f"Missing chunk {i}")
+                        with open(chunk_path, 'rb') as infile:
+                            outfile.write(infile.read())
+                
+                # 清理临时文件
+                import shutil
+                shutil.rmtree(temp_dir)
+                logging.info(f'Successfully completed upload of {filename} (ID: {file_id})')
+                
+                return jsonify({
+                    'status': 'success',
+                    'message': 'File uploaded successfully',
+                    'complete': True
+                })
+            except Exception as e:
+                logging.error(f'Error completing upload of {filename}: {str(e)}')
+                return jsonify({
+                    'status': 'error',
+                    'message': str(e)
+                }), 500
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'Chunk {chunk_number} received',
+            'complete': False
+        })
+        
+    except Exception as e:
+        logging.error(f'Upload error: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+# 定期清理过期的上传
+import atexit
+from apscheduler.schedulers.background import BackgroundScheduler
+
+scheduler = BackgroundScheduler()
+scheduler.add_job(func=cleanup_old_uploads, trigger="interval", hours=1)
+scheduler.start()
+atexit.register(lambda: scheduler.shutdown())
 
 
 @app.route("/download/<path:filepath>", methods=["GET"])

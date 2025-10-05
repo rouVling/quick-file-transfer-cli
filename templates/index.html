@@ -26,7 +26,12 @@
                 <button class="rounded-xl px-4 py-2 ring-2 ring-cyan-400/40 block bg-cyan-400/40 text-rose-400 outline-none shadow-lg shadow-cyan-500/10 hover:shadow-cyan-500/40 active:shadow-cyan-500/50"
                         id="upload">上传
                 </button>
-                <div id="progress"></div>
+                <div class="w-80 mt-4">
+                    <div id="progress-bar" class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 hidden">
+                        <div id="progress-fill" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+                    </div>
+                    <div id="progress-text" class="text-sm text-center mt-2"></div>
+                </div>
             </div>
             <!-- right col -->
             <div class="flex-1 p-[10px] items-center justify-items-center">
@@ -116,31 +121,120 @@
     // });
 
     // upload button: upload file
-    const progress = document.getElementById('progress');
-    let uploadProgressValue = 0;
-    let uploadProgressSum = 0;
+    const progressBar = document.getElementById('progress-bar');
+    const progressFill = document.getElementById('progress-fill');
+    const progressText = document.getElementById('progress-text');
+    const CHUNK_SIZE = 1024 * 1024; // 1MB chunks
 
-    document.getElementById('upload').addEventListener('click', () => {
-        const files = document.getElementById('file').files;
-        uploadProgressValue = 0;
-        uploadProgressSum = files.length;
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            const formData = new FormData();
-            formData.append('file', file);
-            const {time, token} = getAccessToken();
-            fetch(`${url.origin}/upload`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `${token}`
-                },
-                body: formData
-            }).then(response => {
-                if (response.ok) {
-                    uploadProgressValue++;
-                    progress.innerText = `上传进度: ${uploadProgressValue}/${uploadProgressSum}`;
+    async function checkUploadStatus(fileId) {
+        const {token} = getAccessToken();
+        const response = await fetch(`${url.origin}/upload/status/${fileId}`, {
+            headers: {
+                'Authorization': token
+            }
+        });
+        return response.json();
+    }
+
+    async function uploadFile(file) {
+        const fileId = Math.random().toString(36).substring(7);
+        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+        let uploadedChunks = new Set();
+
+        progressBar.classList.remove('hidden');
+        progressText.innerText = '准备上传...';
+
+        try {
+            // 检查是否有未完成的上传
+            const status = await checkUploadStatus(fileId);
+            if (status.status === 'in_progress') {
+                uploadedChunks = new Set(status.uploaded_chunks);
+                progressText.innerText = '发现未完成的上传，继续上传...';
+            }
+
+            for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+                if (uploadedChunks.has(chunkIndex)) {
+                    continue; // 跳过已上传的分块
                 }
-            });
+
+                const chunk = file.slice(
+                    chunkIndex * CHUNK_SIZE,
+                    Math.min((chunkIndex + 1) * CHUNK_SIZE, file.size)
+                );
+
+                const formData = new FormData();
+                formData.append('file', chunk, file.name);
+                formData.append('chunk', chunkIndex.toString());
+                formData.append('total', totalChunks.toString());
+                formData.append('file_id', fileId);
+
+                const maxRetries = 3;
+                let retryCount = 0;
+                
+                while (retryCount < maxRetries) {
+                    try {
+                        const {token} = getAccessToken();
+                        const response = await fetch(`${url.origin}/upload`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': token
+                            },
+                            body: formData
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`上传失败: ${response.statusText}`);
+                        }
+
+                        const result = await response.json();
+                        if (result.status === 'error') {
+                            throw new Error(result.message);
+                        }
+
+                        uploadedChunks.add(chunkIndex);
+                        break; // 成功上传，退出重试循环
+                    } catch (error) {
+                        retryCount++;
+                        if (retryCount === maxRetries) {
+                            throw new Error(`分块 ${chunkIndex} 上传失败: ${error.message}`);
+                        }
+                        progressText.innerText = `重试分块 ${chunkIndex} (${retryCount}/${maxRetries})...`;
+                        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount)); // 延迟重试
+                    }
+                }
+
+                const progress = Math.round((uploadedChunks.size / totalChunks) * 100);
+                progressFill.style.width = `${progress}%`;
+                progressText.innerText = `上传中... ${progress}%`;
+            }
+
+            progressText.innerText = '上传完成！';
+            setTimeout(() => {
+                progressBar.classList.add('hidden');
+                progressText.innerText = '';
+                progressFill.style.width = '0%';
+            }, 2000);
+
+        } catch (error) {
+            progressText.innerText = `上传失败: ${error.message}`;
+            progressFill.style.width = '0%';
+            throw error;
+        }
+    }
+
+    document.getElementById('upload').addEventListener('click', async () => {
+        const files = document.getElementById('file').files;
+        if (files.length === 0) {
+            alert('请选择要上传的文件');
+            return;
+        }
+
+        for (let i = 0; i < files.length; i++) {
+            try {
+                await uploadFile(files[i]);
+            } catch (error) {
+                console.error('上传失败:', error);
+            }
         }
     });
 
